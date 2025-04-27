@@ -1,0 +1,107 @@
+#!/bin/bash
+
+CYAN='\e[1;36m'
+GREEN='\e[1;32m'
+RED='\e[1;31m'
+RESET='\e[0m'
+
+config_portage () {
+
+	emerge-webrsync
+	eselect profile set 24
+
+	emerge --oneshot app-portage/cpuid2cpuflags
+	echo "*/* $(cpuid2cpuflags)" > /etc/portage/package.use/00cpu-flags
+	echo "*/* VIDEO_CARDS: nvidia" > /etc/portage/package.use/00video_cards
+}
+
+config_time_locale () {
+
+	ln -sf ../usr/share/zoneinfo/EST /etc/localtime
+
+	wget -O /etc/locale.gen https://github.com/Matt-y-Ice/gentoo-install-dotfiles/raw/refs/heads/main/locale.gen
+	locale-gen
+
+	eselect locale set 5
+}
+
+reload_env () {
+
+	env-update && source /etc/profile && export PS1="(chroot) ${PS1}"
+}
+
+config_kernel () {
+
+	echo -e "sys-apps/systemd boot\nsys-kernel/installkernel systemd-boot" > /etc/portage/package.use/systemd
+	echo "sys-kernel/installkernel dracut" > /etc/portage/package.use/installkernel
+
+	emerge sys-apps/systemd sys-kernel/installkernel
+
+	echo "quiet splash" > /etc/kernel/cmdline
+
+	emerge sys-kernel/gentoo-kernel
+	emerge sys-kernel/gentoo-sources 
+}
+
+create_fstab () {
+
+	emerge genfstab
+	genfstab / >> /etc/fstab
+}
+
+config_network () {
+
+	echo "gentoo-desktop" > /etc/hostname
+
+	emerge net-misc-dhcpcd
+	systemctl enable dhcpcd
+
+	wget -O /etc/hosts https://github.com/Matt-y-Ice/gentoo-install-dotfiles/raw/refs/heads/main/hosts
+}
+
+set_root_pw () {
+
+	echo -e "${GREEN}+++ Root password +++${RESET}"
+	passwd
+}
+
+config_systemd () {
+
+	systemd-machine-id-setup
+	systemd-firstboot --prompt
+}
+
+install_systools () {
+
+	emerge sys-apps/mlocate
+	emerge app-shells/bash-completion
+	emerge net-misc/chrony
+	emerge enable chronyd.service
+	emerge sys-fs/xfsprogs
+	emerge sys-fs/dosfstools
+}
+
+config_bootloader () {
+
+	echo -e "sys-apps/systemd boot" > /etc/portage/package.use/systemd-boot
+	emerge sys-apps/systemd
+	bootctl install
+}
+
+main () {
+
+	source /etc/profile
+	export PS1="(chroot) ${PS1}"
+
+	config_portage
+	config_time_locale
+	reload_env
+	create_fstab
+	config_network
+	set_root_pw
+	config_systemd
+	install_systools
+	config_bootloader
+}
+
+main "$@"

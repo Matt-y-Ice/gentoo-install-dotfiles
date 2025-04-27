@@ -1,0 +1,147 @@
+#!/usr/bin/bash
+
+SCRIPT_HEADER="*** GENTOO INSTALL SCRIPT v1.0 ***\n"
+CYAN='\e[1;36m'
+GREEN='\e[1;32m'
+RED='\e[1;31m'
+RESET='\e[0m'
+
+clr_screen () {
+
+	# Used to clear screen between install phases
+
+	clear
+	echo -e "${CYAN}\n${SCRIPT_HEADER}${RESET}"
+}
+
+is_sudo () {
+
+	# Check for root privileges
+
+	if [ "$EUID" -ne 0 ]; 
+	then
+		return 1 # Not root
+	else
+		return 0 # User is root
+	fi
+}
+
+be_root () {
+
+	# Require root privileges
+
+	is_sudo
+	if [ $? -ne 0 ]; then
+		echo -e "${RED}!!!This script requires root \
+priviledges${RESET}"
+		exec sudo "$0" "$@"
+	fi
+}
+
+get_disk () {
+
+	# lsblk command outputs disk info
+	# for user to decide which disk
+	# to parition and format
+
+	echo ""
+	echo -e "${GREEN}+++ Disk Information:${RESET}"
+	lsblk
+
+	# Validation loop
+	while true; do
+		echo -e "\n${GREEN}+++ Choose a disk to partition: ${RESET}"
+		read -r disk
+		disk_name="$(basename "$disk")"
+
+		if lsblk | grep -q "^$disk_name"; then
+			break
+		else
+			echo -e "${RED}Invalid disk: $disk ${RESET}"
+		fi
+	done
+}
+
+partition_disk (){
+
+	# Partition disk w/ 1G EFI, 4G SWAP, and rest Linux fs
+
+	wipefs --all $disk
+	echo -e 'size=1G, type=U\n size=4G type=S \n size=+' | sfdisk $disk
+}
+
+format_disk () {
+
+	# Format partitions: Fat32, swap, XFS
+
+	mkfs.vfat -F 32 ${disk}1
+	mkswap ${disk}2
+	mkfs.xfs -f ${disk}3
+	swapon ${disk}2
+}
+
+mount_root () {
+
+	mkdir --parents /mnt/gentoo
+        mount ${disk}3 /mnt/gentoo
+}
+
+mount_efi () {
+
+	mkdir --parents /mnt/gentoo/efi
+	mount ${disk}1 /mnt/gentoo/efi
+}
+
+install_stage3 () {
+
+	wget https://distfiles.gentoo.org/releases/amd64/autobuilds/20250420T121009Z/stage3-amd64-desktop-systemd-20250420T121009Z.tar.xz \
+	--directory-prefix=/mnt/gentoo
+
+	tar xpvf /mnt/gentoo/stage3-*.tar.xz --xattrs-include='*.*' --numeric-owner -C /mnt/gentoo
+}
+
+prep_chroot () {
+
+	# File make.conf configured for desktop: X11, nvidia, amd zen 3 cpu
+
+	rm /mnt/gentoo/etc/portage/make.conf
+	wget -O /mnt/gentoo/etc/portage/make.conf https://github.com/Matt-y-Ice/gentoo-install-dotfiles/raw/refs/heads/main/make.conf
+
+	cp --dereference /etc/resolv.conf /mnt/gentoo/etc
+
+	mount --types proc /proc /mnt/gentoo/proc
+	mount --rbind /sys /mnt/gentoo/sys
+	mount --make-rslave /mnt/gentoo/sys
+	mount --rbind /dev /mnt/gentoo/dev
+	mount --make-rslave /mnt/gentoo/dev
+	mount --bind /run /mnt/gentoo/run
+	mount --make-slave /mnt/gentoo/run
+
+	cp gentoo-chroot-setup /mnt/gentoo/root
+	chmod +x /mnt/gentoo/root/gentoo-chroot-setup
+}
+
+chroot_gentoo () {
+
+	chroot /mnt/gentoo /bin/bash -c "/root/gentoo-chroot-setup"
+}
+
+main () {
+
+# Main function
+
+	clr_screen
+	be_root "$@"
+	get_disk
+	partition_disk
+	format_disk
+	mount_root
+	mount_efi
+	install_stage3
+	prep_chroot
+	chroot_gentoo
+
+	echo "${GREEN}+++ Chroot setup completed -- back on host system.${RESET}"
+}
+
+main "$@"
