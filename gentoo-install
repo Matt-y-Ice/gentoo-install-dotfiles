@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-SCRIPT_HEADER="*** GENTOO INSTALL SCRIPT v1.0 ***\n"
+SCRIPT_HEADER="*** GENTOO INSTALL SCRIPT v1.0 ***"
 CYAN='\e[1;36m'
 GREEN='\e[1;32m'
 RED='\e[1;31m'
@@ -11,7 +11,7 @@ clr_screen () {
 	# Used to clear screen between install phases
 
 	clear
-	echo -e "${CYAN}\n${SCRIPT_HEADER}${RESET}"
+	echo -e "${CYAN}\n${SCRIPT_HEADER}${RESET}\n"
 }
 
 is_sudo () {
@@ -83,13 +83,7 @@ format_disk () {
 mount_root () {
 
 	mkdir --parents /mnt/gentoo
-        mount ${disk}3 /mnt/gentoo
-}
-
-mount_efi () {
-
-	mkdir --parents /mnt/gentoo/efi
-	mount ${disk}1 /mnt/gentoo/efi
+	mount ${disk}3 /mnt/gentoo
 }
 
 install_stage3 () {
@@ -104,6 +98,8 @@ prep_chroot () {
 
 	# File make.conf configured for desktop: X11, nvidia, amd zen 3 cpu
 
+	echo "disk=\"${disk}1\"" > /mnt/gentoo/root/chroot_vars.sh
+
 	rm /mnt/gentoo/etc/portage/make.conf
 	wget -O /mnt/gentoo/etc/portage/make.conf https://github.com/Matt-y-Ice/gentoo-install-dotfiles/raw/refs/heads/main/make.conf
 
@@ -117,7 +113,7 @@ prep_chroot () {
 	mount --bind /run /mnt/gentoo/run
 	mount --make-slave /mnt/gentoo/run
 
-	cp gentoo-chroot-setup /mnt/gentoo/root
+	cp /home/mattyice/.scripts/gentoo-chroot-setup /mnt/gentoo/root
 	chmod +x /mnt/gentoo/root/gentoo-chroot-setup
 }
 
@@ -128,20 +124,20 @@ chroot_gentoo () {
 
 main () {
 
-# Main function
-
 	clr_screen
 	be_root "$@"
+
+	set -euo pipefail
+
 	get_disk
 	partition_disk
 	format_disk
 	mount_root
-	mount_efi
 	install_stage3
 	prep_chroot
 	chroot_gentoo
 
-	echo "${GREEN}+++ Chroot setup completed -- back on host system.${RESET}"
+	echo -e "${GREEN}+++ Chroot setup completed -- back on host system.${RESET}"
 }
 
 main "$@"

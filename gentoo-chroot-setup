@@ -27,10 +27,15 @@ config_time_locale () {
 
 reload_env () {
 
-	env-update && source /etc/profile && export PS1="(chroot) ${PS1}"
+	env-update && source /etc/profile
+	source /root/chroot_vars.sh
 }
 
 config_kernel () {
+
+	source /root/chroot_vars.sh
+	mkdir /efi
+	mount ${disk} /efi
 
 	echo -e "sys-apps/systemd boot\nsys-kernel/installkernel systemd-boot" > /etc/portage/package.use/systemd
 	echo "sys-kernel/installkernel dracut" > /etc/portage/package.use/installkernel
@@ -53,7 +58,7 @@ config_network () {
 
 	echo "gentoo-desktop" > /etc/hostname
 
-	emerge net-misc-dhcpcd
+	emerge net-misc/dhcpcd
 	systemctl enable dhcpcd
 
 	wget -O /etc/hosts https://github.com/Matt-y-Ice/gentoo-install-dotfiles/raw/refs/heads/main/hosts
@@ -76,9 +81,10 @@ install_systools () {
 	emerge sys-apps/mlocate
 	emerge app-shells/bash-completion
 	emerge net-misc/chrony
-	emerge enable chronyd.service
 	emerge sys-fs/xfsprogs
 	emerge sys-fs/dosfstools
+
+	systemctl enable chronyd.service
 }
 
 config_bootloader () {
@@ -90,12 +96,14 @@ config_bootloader () {
 
 main () {
 
-	source /etc/profile
-	export PS1="(chroot) ${PS1}"
+	set -euo pipefail
 
+	source /etc/profile
+	
 	config_portage
 	config_time_locale
 	reload_env
+	config_kernel
 	create_fstab
 	config_network
 	set_root_pw
