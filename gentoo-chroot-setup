@@ -8,7 +8,7 @@ RESET='\e[0m'
 config_portage () {
 
 	emerge-webrsync
-	eselect profile set 24
+	eselect profile set 26
 
 	emerge --oneshot app-portage/cpuid2cpuflags
 	echo "*/* $(cpuid2cpuflags)" > /etc/portage/package.use/00cpu-flags
@@ -17,7 +17,7 @@ config_portage () {
 
 config_time_locale () {
 
-	ln -sf ../usr/share/zoneinfo/EST /etc/localtime
+	ln -sf ../usr/share/zoneinfo/US/Eastern /etc/localtime
 
 	wget -O /etc/locale.gen https://github.com/Matt-y-Ice/gentoo-install-dotfiles/raw/refs/heads/main/locale.gen
 	locale-gen
@@ -60,8 +60,9 @@ config_network () {
 
 	echo "gentoo-desktop" > /etc/hostname
 
-	emerge net-misc/dhcpcd
+	emerge net-misc/dhcpcd net-misc/networkmanager
 	systemctl enable dhcpcd
+	systemctl enable NetworkManager
 
 	wget -O /etc/hosts https://github.com/Matt-y-Ice/gentoo-install-dotfiles/raw/refs/heads/main/hosts
 }
@@ -76,6 +77,7 @@ config_systemd () {
 
 	systemd-machine-id-setup
 	systemd-firstboot --prompt
+	systemd preset-all --preset-mode=enable-only
 }
 
 install_systools () {
@@ -113,6 +115,12 @@ fix_boot_entry () {
     fi
 }
 
+system_update () {
+    emerge sys-kernel/linux-firmware
+    emerge --update --deep --changed-use @world
+    emerge --depclean
+}
+
 main () {
 
 	set -euo pipefail
@@ -130,6 +138,10 @@ main () {
 	install_systools
 	config_bootloader
 	fix_boot_entry
+	system_update
+
+	umount -R /mnt/gentoo
+	reboot
 }
 
 main "$@"
