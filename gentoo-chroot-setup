@@ -77,7 +77,6 @@ config_systemd () {
 
 	systemd-machine-id-setup
 	systemd-firstboot --prompt
-	systemd preset-all --preset-mode=enable-only
 }
 
 install_systools () {
