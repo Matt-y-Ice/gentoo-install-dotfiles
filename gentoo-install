@@ -62,12 +62,18 @@ get_disk () {
 	done
 }
 
-partition_disk (){
+partition_disk () {
 
-	# Partition disk w/ 1G EFI, 4G SWAP, and rest Linux fs
+    wipefs --all "$disk"
+    echo -e 'size=1G, type=U\n size=4G type=S \n size=+' | sfdisk --label=gpt "$disk"
 
-	wipefs --all $disk
-	echo -e 'size=1G, type=U\n size=4G type=S \n size=+' | sfdisk $disk
+    ptype=$(sfdisk --json "$disk" | grep '"label":' | awk -F '"' '{print $4}')
+    if [ "$ptype" = "dos" ]; then
+        echo "MBR detected, setting boot flag on ${disk}1..."
+        sfdisk --activate "$disk" 1
+    else
+        echo "GPT detected, no boot flag needed."
+    fi
 }
 
 format_disk () {

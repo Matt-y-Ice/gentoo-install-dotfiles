@@ -52,6 +52,8 @@ create_fstab () {
 
 	emerge genfstab
 	genfstab / >> /etc/fstab
+	systemctl daemon-reexec
+	systemctl daemon-reload
 }
 
 config_network () {
@@ -91,7 +93,24 @@ config_bootloader () {
 
 	echo -e "sys-apps/systemd boot" > /etc/portage/package.use/systemd-boot
 	emerge sys-apps/systemd
-	bootctl install
+	bootctl --esp-path=/efi install
+}
+
+fix_boot_entry () {
+
+    echo "+++ Fixing bootloader entry..."
+
+    ROOT_DISK="${disk%?}3"
+    ROOT_UUID=$(blkid -s UUID -o value "$ROOT_DISK")
+    BOOT_ENTRY_FILE=$(find /efi/loader/entries/ -name 'gentoo-*.conf' | sort | tail -n 1)
+
+    if [ -f "$BOOT_ENTRY_FILE" ]; then
+        sed -i "s|^options.*|options root=UUID=${ROOT_UUID} quiet splash|" "$BOOT_ENTRY_FILE"
+        echo "+++ Bootloader entry updated successfully: $BOOT_ENTRY_FILE"
+    else
+        echo "!!! Bootloader entry not found under /efi/loader/entries/"
+	exit 1
+    fi
 }
 
 main () {
@@ -99,7 +118,7 @@ main () {
 	set -euo pipefail
 
 	source /etc/profile
-	
+
 	config_portage
 	config_time_locale
 	reload_env
@@ -110,6 +129,7 @@ main () {
 	config_systemd
 	install_systools
 	config_bootloader
+	fix_boot_entry
 }
 
 main "$@"
