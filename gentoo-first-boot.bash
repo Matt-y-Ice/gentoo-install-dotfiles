@@ -18,11 +18,11 @@ install_sudo () {
 install_gnome () {
     echo "gnome-base/gnome -extras" > /etc/portage/package.use/gnome
     echo "media-video/pipewire" > /etc/portage/package.use/pipewire
-    emerge gnome-base/gnome app-arch/file-roller gnome-base/dconf-editor gnome-extra/gnome-calculator gnome-extra/gnome-system-monitor gnome-extra/gnome-tweaks gnome-extra/gnome-weather sys-apps/gnome-disk-utility sys-apps/baobab
+    emerge gnome-base/gnome app-arch/file-roller gnome-base/dconf-editor gnome-extra/gnome-calculator gnome-extra/gnome-system-monitor gnome-extra/gnome-tweaks gnome-extra/gnome-weather sys-apps/gnome-disk-utility sys-apps/baobab aa-eselect/eselect-gnome-shell-extensions
     systemctl enable --now gdm
     emerge video-media/pipewire video-media/wireplumber
-    systemctl --user enable --now pipewire-pulse.socket wireplumber-service
-    systemctl --user enable --now pipewire.service
+    #systemctl --user enable --now pipewire-pulse.socket wireplumber-service
+    #systemctl --user enable --now pipewire.service
     emerge media-libs/openal
 }
 
@@ -35,14 +35,23 @@ install_flatpak () {
     emerge gnome-extra/gnome-software
 }
 
+install_applications () {
+    echo "x11-terms/alacritty wayland" > /etc/portage/package.use/alacritty
+    emerge x11-terms/alacritty
+    emerge app-eselect/eselect-repository
+    eselect repository enable gentoo-zh
+    emaint sync
+    emerge www-client/thorium-browser-bin
+}
+
 main () {
     rm /stage3-*.tar.*
-    # need to switch gentoo profile to gnome
-    create_user
-    install_sudo
+       
     install_gnome
     install_flatpak
+    install_sudo
+    create_user
+    install_applications
     
-
     echo -e "${RED}!!! Reminder: Type /"visudo/" command to uncomment wheel line!${RESET}"
 }
