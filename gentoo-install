@@ -119,8 +119,10 @@ prep_chroot () {
 	mount --bind /run /mnt/gentoo/run
 	mount --make-slave /mnt/gentoo/run
 
-	cp /home/mattyice/.scripts/gentoo-chroot-setup /mnt/gentoo/root
+	cp /home/mattyice/.scripts/gentoo-chroot-setup # confirm path /mnt/gentoo/root
 	chmod +x /mnt/gentoo/root/gentoo-chroot-setup
+	cp /home/mattyice/.scripts/gentoo-first-boot.bash # confirm path
+	chmod +x /mnt/gentoo/root/gentoo-first-boot.bash
 }
 
 chroot_gentoo () {
